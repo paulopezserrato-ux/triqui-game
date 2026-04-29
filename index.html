@@ -36,10 +36,106 @@
       font-size: 0.85rem;
       letter-spacing: 3px;
       color: #888;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
       text-transform: uppercase;
     }
 
+    /* ── Mode selector ── */
+    .mode-selector {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 4px;
+    }
+
+    .mode-btn {
+      padding: 8px 22px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #888;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: rgba(255,255,255,0.13);
+      color: #fff;
+    }
+
+    .mode-btn:not(.active):hover { color: #ccc; }
+
+    /* ── Difficulty bar ── */
+    .difficulty-bar {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 20px;
+      padding: 10px 24px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      text-align: center;
+      transition: box-shadow 0.3s;
+    }
+
+    .difficulty-bar.visible { display: flex; }
+
+    .difficulty-bar.levelup {
+      animation: diffLevelUp 0.9s ease-out;
+    }
+
+    @keyframes diffLevelUp {
+      0%   { box-shadow: 0 0 0px rgba(255,215,0,0); border-color: rgba(255,255,255,0.08); }
+      30%  { box-shadow: 0 0 24px rgba(255,215,0,0.6); border-color: rgba(255,215,0,0.7); }
+      100% { box-shadow: 0 0 0px rgba(255,215,0,0); border-color: rgba(255,255,255,0.08); }
+    }
+
+    .diff-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .diff-label-text {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    .diff-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: color 0.4s;
+    }
+
+    .diff-name.easy   { color: #43e97b; }
+    .diff-name.medium { color: #ff8c00; }
+    .diff-name.hard   { color: #e94560; }
+
+    .diff-stars {
+      font-size: 0.95rem;
+      letter-spacing: 2px;
+    }
+
+    .diff-hint {
+      font-size: 0.68rem;
+      letter-spacing: 1px;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    /* ── Scoreboard ── */
     .scoreboard {
       display: flex;
       gap: 24px;
@@ -83,6 +179,7 @@
       font-weight: 700;
     }
 
+    /* ── Status ── */
     .status {
       font-size: 1.1rem;
       margin-bottom: 24px;
@@ -98,6 +195,7 @@
     .status .mark.x { color: #e94560; }
     .status .mark.o { color: #53d8fb; }
 
+    /* ── Board ── */
     .board {
       display: grid;
       grid-template-columns: repeat(3, 110px);
@@ -120,12 +218,12 @@
       user-select: none;
     }
 
-    .cell:hover:not(.taken) {
+    .cell:hover:not(.taken):not(.locked) {
       background: rgba(255,255,255,0.1);
       transform: scale(1.04);
     }
 
-    .cell.taken {
+    .cell.taken, .cell.locked {
       cursor: default;
     }
 
@@ -161,6 +259,7 @@
       100% { transform: scale(1); }
     }
 
+    /* ── Buttons ── */
     .buttons {
       display: flex;
       gap: 12px;
@@ -246,9 +345,25 @@
   <h1>TRIQUI</h1>
   <p class="subtitle">Tic Tac Toe</p>
 
+  <!-- Mode selector -->
+  <div class="mode-selector">
+    <button class="mode-btn active" id="btn-hvh">👥 2 Players</button>
+    <button class="mode-btn" id="btn-hvpc">🤖 vs CPU</button>
+  </div>
+
+  <!-- Difficulty bar (CPU mode only) -->
+  <div class="difficulty-bar" id="difficulty-bar">
+    <div class="diff-row">
+      <span class="diff-label-text">Difficulty</span>
+      <span class="diff-name easy" id="diff-name">EASY</span>
+      <span class="diff-stars" id="diff-stars">★☆☆</span>
+    </div>
+    <div class="diff-hint" id="diff-hint">Win to unlock Medium</div>
+  </div>
+
   <div class="scoreboard">
     <div class="score-card x-card" id="card-x">
-      <div class="label">Player</div>
+      <div class="label" id="label-x">Player</div>
       <div class="player-mark">X</div>
       <div class="score-value" id="score-x">0</div>
     </div>
@@ -258,7 +373,7 @@
       <div class="score-value" id="score-draw">0</div>
     </div>
     <div class="score-card o-card" id="card-o">
-      <div class="label">Player</div>
+      <div class="label" id="label-o">Player</div>
       <div class="player-mark">O</div>
       <div class="score-value" id="score-o">0</div>
     </div>
@@ -346,7 +461,6 @@
         ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // ribbon — thin wavy line
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(-p.w, 0);
@@ -374,7 +488,6 @@
         p.vy += p.gravity;
         p.rot += p.rotV;
 
-        // fade out in the last second (after 2000 ms)
         if (elapsed > 2000) {
           p.alpha -= 0.018;
         }
@@ -387,29 +500,28 @@
     }
 
     function celebrate(winner) {
-      // clean up any prior run
       stopCelebration(false);
 
       resize();
       celebrationEl.style.display = 'block';
 
-      // show win banner
-      bannerText.textContent = `Player ${winner} wins!`;
+      if (gameMode === 'hvpc') {
+        bannerText.textContent = winner === 'X' ? 'You win!' : 'CPU wins!';
+      } else {
+        bannerText.textContent = `Player ${winner} wins!`;
+      }
       winBanner.className = '';
       winBanner.classList.add(winner === 'X' ? 'x-win' : 'o-win');
       winBanner.style.display = 'flex';
 
-      // initial big burst
       spawnBurst(180);
 
-      // keep spawning for 1.8 s
       elapsed  = 0;
       lastTime = null;
       spawnInterval = setInterval(() => spawnBurst(40), 250);
 
       animId = requestAnimationFrame(animate);
 
-      // stop everything after 3 s
       stopTimer = setTimeout(() => stopCelebration(true), 3000);
     }
 
@@ -428,25 +540,128 @@
       if (celebrationEl.style.display === 'block') resize();
     });
 
-    /* ── Game logic ── */
+    /* ── Game state ── */
     const WINS = [
       [0,1,2],[3,4,5],[6,7,8],
       [0,3,6],[1,4,7],[2,5,8],
       [0,4,8],[2,4,6]
     ];
 
-    let board = Array(9).fill(null);
-    let current = 'X';
-    let gameOver = false;
-    let scores = { X: 0, O: 0, draw: 0 };
+    let board      = Array(9).fill(null);
+    let current    = 'X';
+    let gameOver   = false;
+    let scores     = { X: 0, O: 0, draw: 0 };
+    let gameMode   = 'hvh';   // 'hvh' | 'hvpc'
+    let difficulty = 1;       // 1=easy 2=medium 3=hard
+    let humanWins  = 0;       // human wins this session (drives difficulty)
+    let aiThinking = false;
 
-    const cells     = document.querySelectorAll('.cell');
-    const statusEl  = document.getElementById('status');
-    const scoreX    = document.getElementById('score-x');
-    const scoreO    = document.getElementById('score-o');
-    const scoreDraw = document.getElementById('score-draw');
-    const cardX     = document.getElementById('card-x');
-    const cardO     = document.getElementById('card-o');
+    const cells      = document.querySelectorAll('.cell');
+    const statusEl   = document.getElementById('status');
+    const scoreX     = document.getElementById('score-x');
+    const scoreO     = document.getElementById('score-o');
+    const scoreDraw  = document.getElementById('score-draw');
+    const cardX      = document.getElementById('card-x');
+    const cardO      = document.getElementById('card-o');
+    const labelX     = document.getElementById('label-x');
+    const labelO     = document.getElementById('label-o');
+    const diffBar    = document.getElementById('difficulty-bar');
+    const diffName   = document.getElementById('diff-name');
+    const diffStars  = document.getElementById('diff-stars');
+    const diffHint   = document.getElementById('diff-hint');
+
+    /* ── AI ── */
+
+    function getEmptyCells(b) {
+      return b.reduce((acc, v, i) => v === null ? [...acc, i] : acc, []);
+    }
+
+    function checkWinnerOn(b) {
+      for (const combo of WINS) {
+        const [i, j, k] = combo;
+        if (b[i] && b[i] === b[j] && b[i] === b[k]) {
+          return { winner: b[i], line: combo };
+        }
+      }
+      if (b.every(v => v !== null)) return { winner: null, line: null, draw: true };
+      return null;
+    }
+
+    function findWinningMove(b, mark) {
+      for (const combo of WINS) {
+        const [i, j, k] = combo;
+        const vals = [b[i], b[j], b[k]];
+        if (vals.filter(v => v === mark).length === 2 && vals.includes(null)) {
+          return combo[vals.indexOf(null)];
+        }
+      }
+      return null;
+    }
+
+    function minimax(b, isMaximizing) {
+      const result = checkWinnerOn(b);
+      if (result) {
+        if (result.winner === 'O') return 10;
+        if (result.winner === 'X') return -10;
+        return 0;
+      }
+      const empty = getEmptyCells(b);
+      if (isMaximizing) {
+        let best = -Infinity;
+        for (const i of empty) {
+          b[i] = 'O';
+          best = Math.max(best, minimax(b, false));
+          b[i] = null;
+        }
+        return best;
+      } else {
+        let best = Infinity;
+        for (const i of empty) {
+          b[i] = 'X';
+          best = Math.min(best, minimax(b, true));
+          b[i] = null;
+        }
+        return best;
+      }
+    }
+
+    function aiMoveRandom() {
+      const empty = getEmptyCells(board);
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+
+    function aiMoveMedium() {
+      // 65% chance to play smart (win > block > random), otherwise random
+      if (Math.random() < 0.65) {
+        const win   = findWinningMove(board, 'O');
+        const block = findWinningMove(board, 'X');
+        return win ?? block ?? aiMoveRandom();
+      }
+      return aiMoveRandom();
+    }
+
+    function aiMoveHard() {
+      let bestScore = -Infinity;
+      let bestMove  = null;
+      const b = [...board];
+      for (let i = 0; i < 9; i++) {
+        if (b[i] === null) {
+          b[i] = 'O';
+          const score = minimax(b, false);
+          b[i] = null;
+          if (score > bestScore) { bestScore = score; bestMove = i; }
+        }
+      }
+      return bestMove;
+    }
+
+    function getAIMove() {
+      if (difficulty === 1) return aiMoveRandom();
+      if (difficulty === 2) return aiMoveMedium();
+      return aiMoveHard();
+    }
+
+    /* ── UI helpers ── */
 
     function setStatus(html) { statusEl.innerHTML = html; }
 
@@ -459,75 +674,172 @@
       cardO.classList.toggle('active', current === 'O' && !gameOver);
     }
 
+    const DIFF_DATA = {
+      1: { name: 'EASY',   cls: 'easy',   stars: '★☆☆', hint: 'Win to unlock Medium' },
+      2: { name: 'MEDIUM', cls: 'medium', stars: '★★☆', hint: 'Win to unlock Hard (unbeatable)' },
+      3: { name: 'HARD',   cls: 'hard',   stars: '★★★', hint: 'Maximum difficulty!' },
+    };
+
+    function updateDifficultyUI(leveledUp) {
+      const d = DIFF_DATA[difficulty];
+      diffName.textContent = d.name;
+      diffName.className   = `diff-name ${d.cls}`;
+      diffStars.textContent = d.stars;
+      diffHint.textContent  = d.hint;
+
+      if (leveledUp) {
+        diffBar.classList.remove('levelup');
+        void diffBar.offsetWidth; // reflow to restart animation
+        diffBar.classList.add('levelup');
+      }
+    }
+
+    function updateModeUI() {
+      if (gameMode === 'hvpc') {
+        diffBar.classList.add('visible');
+        labelX.textContent = 'You';
+        labelO.textContent = 'CPU';
+      } else {
+        diffBar.classList.remove('visible');
+        labelX.textContent = 'Player';
+        labelO.textContent = 'Player';
+      }
+      updateDifficultyUI(false);
+    }
+
+    /* ── Core game logic ── */
+
     function checkWinner() {
-      for (const [a, b, c] of WINS) {
-        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-          return { winner: board[a], line: [a, b, c] };
+      return checkWinnerOn(board);
+    }
+
+    function lockBoard() {
+      cells.forEach(c => c.classList.add('locked'));
+    }
+
+    function unlockBoard() {
+      cells.forEach(c => c.classList.remove('locked'));
+    }
+
+    function endGame(result) {
+      gameOver   = true;
+      aiThinking = false;
+      lockBoard();
+      cardX.classList.remove('active');
+      cardO.classList.remove('active');
+
+      if (result.draw) {
+        scores.draw++;
+        scoreDraw.textContent = scores.draw;
+        setStatus('It\'s a <strong>draw!</strong>');
+      } else {
+        scores[result.winner]++;
+        (result.winner === 'X' ? scoreX : scoreO).textContent = scores[result.winner];
+        result.line.forEach(i => cells[i].classList.add('winning'));
+
+        const displayWinner = gameMode === 'hvpc'
+          ? (result.winner === 'X' ? 'You' : 'CPU')
+          : `Player ${result.winner}`;
+        setStatus(`${displayWinner} wins! 🎉`);
+
+        if (gameMode === 'hvpc' && result.winner === 'X') {
+          const oldDiff = difficulty;
+          humanWins++;
+          difficulty = humanWins >= 2 ? 3 : humanWins >= 1 ? 2 : 1;
+          updateDifficultyUI(difficulty !== oldDiff);
+        }
+
+        celebrate(result.winner);
+      }
+    }
+
+    function makeMove(idx) {
+      board[idx] = current;
+      const cell = cells[idx];
+      cell.textContent = current;
+      cell.classList.add('taken', current.toLowerCase(), 'pop');
+
+      const result = checkWinner();
+      if (result) {
+        endGame(result);
+      } else {
+        current = current === 'X' ? 'O' : 'X';
+        if (gameMode === 'hvpc' && current === 'O') {
+          setStatus(`<span class="mark o">CPU</span> is thinking…`);
+          updateActiveCard();
+          triggerAI();
+        } else {
+          setStatus(`${markSpan(current)}'s turn`);
+          updateActiveCard();
         }
       }
-      if (board.every(v => v !== null)) return { winner: null, line: null, draw: true };
-      return null;
+    }
+
+    function triggerAI() {
+      aiThinking = true;
+      lockBoard();
+      setTimeout(() => {
+        if (gameOver) { aiThinking = false; return; }
+        const idx = getAIMove();
+        aiThinking = false;
+        unlockBoard();
+        makeMove(idx);
+      }, 450 + Math.random() * 300);
     }
 
     function handleClick(e) {
       const cell = e.currentTarget;
       const idx  = parseInt(cell.dataset.index);
-      if (gameOver || board[idx]) return;
-
-      board[idx] = current;
-      cell.textContent = current;
-      cell.classList.add('taken', current.toLowerCase(), 'pop');
-
-      const result = checkWinner();
-
-      if (result) {
-        gameOver = true;
-        cardX.classList.remove('active');
-        cardO.classList.remove('active');
-
-        if (result.draw) {
-          scores.draw++;
-          scoreDraw.textContent = scores.draw;
-          setStatus('It\'s a <strong>draw!</strong>');
-        } else {
-          scores[result.winner]++;
-          (result.winner === 'X' ? scoreX : scoreO).textContent = scores[result.winner];
-          result.line.forEach(i => cells[i].classList.add('winning'));
-          setStatus(`${markSpan(result.winner)} wins! 🎉`);
-          celebrate(result.winner);
-        }
-      } else {
-        current = current === 'X' ? 'O' : 'X';
-        setStatus(`${markSpan(current)}'s turn`);
-        updateActiveCard();
-      }
+      if (gameOver || board[idx] || aiThinking) return;
+      if (gameMode === 'hvpc' && current === 'O') return;
+      makeMove(idx);
     }
+
+    /* ── Round / session management ── */
 
     function restartRound() {
       stopCelebration(true);
-      board = Array(9).fill(null);
-      current = 'X';
+      board    = Array(9).fill(null);
+      current  = 'X';
       gameOver = false;
+      aiThinking = false;
       cells.forEach(cell => {
         cell.textContent = '';
-        cell.className = 'cell';
+        cell.className   = 'cell';
       });
       setStatus(`${markSpan(current)}'s turn`);
       updateActiveCard();
     }
 
     function resetAll() {
-      scores = { X: 0, O: 0, draw: 0 };
-      scoreX.textContent   = '0';
-      scoreO.textContent   = '0';
+      scores     = { X: 0, O: 0, draw: 0 };
+      humanWins  = 0;
+      difficulty = 1;
+      scoreX.textContent    = '0';
+      scoreO.textContent    = '0';
       scoreDraw.textContent = '0';
+      updateDifficultyUI(false);
       restartRound();
     }
+
+    function setMode(mode) {
+      gameMode = mode;
+      document.getElementById('btn-hvh').classList.toggle('active', mode === 'hvh');
+      document.getElementById('btn-hvpc').classList.toggle('active', mode === 'hvpc');
+      updateModeUI();
+      restartRound();
+    }
+
+    /* ── Event listeners ── */
 
     cells.forEach(cell => cell.addEventListener('click', handleClick));
     document.getElementById('btn-restart').addEventListener('click', restartRound);
     document.getElementById('btn-reset').addEventListener('click', resetAll);
+    document.getElementById('btn-hvh').addEventListener('click', () => setMode('hvh'));
+    document.getElementById('btn-hvpc').addEventListener('click', () => setMode('hvpc'));
 
+    /* ── Init ── */
+    updateModeUI();
     restartRound();
   </script>
 </body>
