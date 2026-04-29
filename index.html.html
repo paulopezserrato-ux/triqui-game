@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triqui</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #eee;
+    }
+
+    h1 {
+      font-size: 3rem;
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #e94560, #0f3460, #53d8fb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      letter-spacing: 3px;
+      color: #888;
+      margin-bottom: 32px;
+      text-transform: uppercase;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .score-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px 28px;
+      text-align: center;
+      min-width: 90px;
+      transition: border-color 0.3s;
+    }
+
+    .score-card.active {
+      border-color: #53d8fb;
+      box-shadow: 0 0 12px rgba(83,216,251,0.25);
+    }
+
+    .score-card .label {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .score-card .player-mark {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .score-card.x-card .player-mark { color: #e94560; }
+    .score-card.o-card .player-mark { color: #53d8fb; }
+    .score-card.draw-card .player-mark { color: #aaa; font-size: 1.1rem; }
+
+    .score-card .score-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .status {
+      font-size: 1.1rem;
+      margin-bottom: 24px;
+      height: 28px;
+      letter-spacing: 1px;
+      transition: opacity 0.3s;
+    }
+
+    .status .mark {
+      font-weight: 700;
+    }
+
+    .status .mark.x { color: #e94560; }
+    .status .mark.o { color: #53d8fb; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .cell {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: rgba(255,255,255,0.1);
+      transform: scale(1.04);
+    }
+
+    .cell.taken {
+      cursor: default;
+    }
+
+    .cell.x {
+      color: #e94560;
+      text-shadow: 0 0 16px rgba(233,69,96,0.6);
+    }
+
+    .cell.o {
+      color: #53d8fb;
+      text-shadow: 0 0 16px rgba(83,216,251,0.6);
+    }
+
+    .cell.winning {
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 0 20px rgba(255,255,150,0.25);
+      border-color: rgba(255,255,150,0.5);
+      animation: pulse 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 10px rgba(255,255,150,0.2); }
+      to   { box-shadow: 0 0 28px rgba(255,255,150,0.5); }
+    }
+
+    .cell.pop {
+      animation: pop 0.2s ease-out;
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(0.6); }
+      70%  { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:active { transform: scale(0.96); }
+
+    .btn-restart {
+      background: linear-gradient(135deg, #e94560, #c0392b);
+      color: #fff;
+    }
+
+    .btn-reset {
+      background: rgba(255,255,255,0.08);
+      color: #aaa;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .btn-reset:hover { opacity: 0.8; }
+
+    /* ── Celebration overlay ── */
+    #celebration {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      display: none;
+    }
+
+    #celebration canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    #win-banner {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    #win-banner .banner-text {
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 900;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow:
+        0 0 20px currentColor,
+        0 4px 30px rgba(0,0,0,0.6);
+      animation: bannerPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    @keyframes bannerPop {
+      0%   { transform: scale(0.3) rotate(-6deg); opacity: 0; }
+      100% { transform: scale(1)   rotate(0deg);  opacity: 1; }
+    }
+
+    #win-banner.x-win .banner-text { color: #e94560; }
+    #win-banner.o-win .banner-text { color: #53d8fb; }
+  </style>
+</head>
+<body>
+
+  <!-- Celebration layer -->
+  <div id="celebration"><canvas id="confetti-canvas"></canvas></div>
+  <div id="win-banner"><div class="banner-text" id="banner-text"></div></div>
+
+  <h1>TRIQUI</h1>
+  <p class="subtitle">Tic Tac Toe</p>
+
+  <div class="scoreboard">
+    <div class="score-card x-card" id="card-x">
+      <div class="label">Player</div>
+      <div class="player-mark">X</div>
+      <div class="score-value" id="score-x">0</div>
+    </div>
+    <div class="score-card draw-card" id="card-draw">
+      <div class="label">Draws</div>
+      <div class="player-mark">—</div>
+      <div class="score-value" id="score-draw">0</div>
+    </div>
+    <div class="score-card o-card" id="card-o">
+      <div class="label">Player</div>
+      <div class="player-mark">O</div>
+      <div class="score-value" id="score-o">0</div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="board" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <div class="buttons">
+    <button class="btn-restart" id="btn-restart">New Round</button>
+    <button class="btn-reset" id="btn-reset">Reset Scores</button>
+  </div>
+
+  <script>
+    /* ── Confetti / streamer engine ── */
+    const celebrationEl = document.getElementById('celebration');
+    const winBanner     = document.getElementById('win-banner');
+    const bannerText    = document.getElementById('banner-text');
+    const canvas        = document.getElementById('confetti-canvas');
+    const ctx           = canvas.getContext('2d');
+
+    const COLORS = [
+      '#e94560','#53d8fb','#ffd700','#ff6b6b','#a8ff78',
+      '#ff8c00','#c471ed','#12c2e9','#f64f59','#43e97b'
+    ];
+
+    const SHAPES = ['rect', 'circle', 'ribbon'];
+
+    let particles = [];
+    let animId    = null;
+    let stopTimer = null;
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function randomBetween(a, b) { return a + Math.random() * (b - a); }
+
+    function spawnBurst(count) {
+      for (let i = 0; i < count; i++) {
+        const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        particles.push({
+          x:       randomBetween(0, canvas.width),
+          y:       randomBetween(-canvas.height * 0.2, 0),
+          vx:      randomBetween(-3, 3),
+          vy:      randomBetween(2, 7),
+          rot:     randomBetween(0, Math.PI * 2),
+          rotV:    randomBetween(-0.12, 0.12),
+          w:       randomBetween(8, 18),
+          h:       randomBetween(4, 10),
+          color:   COLORS[Math.floor(Math.random() * COLORS.length)],
+          shape,
+          alpha:   1,
+          gravity: randomBetween(0.08, 0.18),
+          wave:    randomBetween(0, Math.PI * 2),
+          waveAmp: randomBetween(0.5, 2),
+        });
+      }
+    }
+
+    function drawParticle(p) {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle   = p.color;
+      ctx.strokeStyle = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+
+      if (p.shape === 'rect') {
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      } else if (p.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // ribbon — thin wavy line
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-p.w, 0);
+        ctx.bezierCurveTo(-p.w / 2, -p.h, p.w / 2, p.h, p.w, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    let spawnInterval = null;
+    let elapsed = 0;
+    let lastTime = null;
+
+    function animate(ts) {
+      if (!lastTime) lastTime = ts;
+      elapsed += ts - lastTime;
+      lastTime = ts;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(p => {
+        p.wave += 0.06;
+        p.x  += p.vx + Math.sin(p.wave) * p.waveAmp;
+        p.y  += p.vy;
+        p.vy += p.gravity;
+        p.rot += p.rotV;
+
+        // fade out in the last second (after 2000 ms)
+        if (elapsed > 2000) {
+          p.alpha -= 0.018;
+        }
+      });
+
+      particles = particles.filter(p => p.alpha > 0 && p.y < canvas.height + 40);
+      particles.forEach(drawParticle);
+
+      animId = requestAnimationFrame(animate);
+    }
+
+    function celebrate(winner) {
+      // clean up any prior run
+      stopCelebration(false);
+
+      resize();
+      celebrationEl.style.display = 'block';
+
+      // show win banner
+      bannerText.textContent = `Player ${winner} wins!`;
+      winBanner.className = '';
+      winBanner.classList.add(winner === 'X' ? 'x-win' : 'o-win');
+      winBanner.style.display = 'flex';
+
+      // initial big burst
+      spawnBurst(180);
+
+      // keep spawning for 1.8 s
+      elapsed  = 0;
+      lastTime = null;
+      spawnInterval = setInterval(() => spawnBurst(40), 250);
+
+      animId = requestAnimationFrame(animate);
+
+      // stop everything after 3 s
+      stopTimer = setTimeout(() => stopCelebration(true), 3000);
+    }
+
+    function stopCelebration(clearBanner) {
+      clearInterval(spawnInterval);
+      clearTimeout(stopTimer);
+      cancelAnimationFrame(animId);
+      spawnInterval = animId = stopTimer = null;
+      particles = [];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      celebrationEl.style.display = 'none';
+      if (clearBanner) winBanner.style.display = 'none';
+    }
+
+    window.addEventListener('resize', () => {
+      if (celebrationEl.style.display === 'block') resize();
+    });
+
+    /* ── Game logic ── */
+    const WINS = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    let board = Array(9).fill(null);
+    let current = 'X';
+    let gameOver = false;
+    let scores = { X: 0, O: 0, draw: 0 };
+
+    const cells     = document.querySelectorAll('.cell');
+    const statusEl  = document.getElementById('status');
+    const scoreX    = document.getElementById('score-x');
+    const scoreO    = document.getElementById('score-o');
+    const scoreDraw = document.getElementById('score-draw');
+    const cardX     = document.getElementById('card-x');
+    const cardO     = document.getElementById('card-o');
+
+    function setStatus(html) { statusEl.innerHTML = html; }
+
+    function markSpan(m) {
+      return `<span class="mark ${m.toLowerCase()}">${m}</span>`;
+    }
+
+    function updateActiveCard() {
+      cardX.classList.toggle('active', current === 'X' && !gameOver);
+      cardO.classList.toggle('active', current === 'O' && !gameOver);
+    }
+
+    function checkWinner() {
+      for (const [a, b, c] of WINS) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return { winner: board[a], line: [a, b, c] };
+        }
+      }
+      if (board.every(v => v !== null)) return { winner: null, line: null, draw: true };
+      return null;
+    }
+
+    function handleClick(e) {
+      const cell = e.currentTarget;
+      const idx  = parseInt(cell.dataset.index);
+      if (gameOver || board[idx]) return;
+
+      board[idx] = current;
+      cell.textContent = current;
+      cell.classList.add('taken', current.toLowerCase(), 'pop');
+
+      const result = checkWinner();
+
+      if (result) {
+        gameOver = true;
+        cardX.classList.remove('active');
+        cardO.classList.remove('active');
+
+        if (result.draw) {
+          scores.draw++;
+          scoreDraw.textContent = scores.draw;
+          setStatus('It\'s a <strong>draw!</strong>');
+        } else {
+          scores[result.winner]++;
+          (result.winner === 'X' ? scoreX : scoreO).textContent = scores[result.winner];
+          result.line.forEach(i => cells[i].classList.add('winning'));
+          setStatus(`${markSpan(result.winner)} wins! 🎉`);
+          celebrate(result.winner);
+        }
+      } else {
+        current = current === 'X' ? 'O' : 'X';
+        setStatus(`${markSpan(current)}'s turn`);
+        updateActiveCard();
+      }
+    }
+
+    function restartRound() {
+      stopCelebration(true);
+      board = Array(9).fill(null);
+      current = 'X';
+      gameOver = false;
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.className = 'cell';
+      });
+      setStatus(`${markSpan(current)}'s turn`);
+      updateActiveCard();
+    }
+
+    function resetAll() {
+      scores = { X: 0, O: 0, draw: 0 };
+      scoreX.textContent   = '0';
+      scoreO.textContent   = '0';
+      scoreDraw.textContent = '0';
+      restartRound();
+    }
+
+    cells.forEach(cell => cell.addEventListener('click', handleClick));
+    document.getElementById('btn-restart').addEventListener('click', restartRound);
+    document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+    restartRound();
+  </script>
+</body>
+</html>
